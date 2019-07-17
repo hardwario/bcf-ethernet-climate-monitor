@@ -1,9 +1,53 @@
 #include <application.h>
 
-#include "w5500data.h"
+#include "wizchip_conf.h"
 
-// LED instance
-bc_led_t led;
+#include "httpServer.h"
+#include "webpage.h"
+
+/*****************************************************************************
+ * Public types/enumerations/variables
+ ****************************************************************************/
+///////////////////////////////////////
+// Debugging Message Printout enable //
+///////////////////////////////////////
+#define _MAIN_DEBUG_
+
+///////////////////////////
+// Demo Firmware Version //
+///////////////////////////
+#define VER_H		1
+#define VER_L		00
+
+//////////////////////////////////////////////////
+// Socket & Port number definition for Examples //
+//////////////////////////////////////////////////
+#define SOCK_TCPS       0
+#define SOCK_UDPS       1
+#define PORT_TCPS		5000
+#define PORT_UDPS       3000
+
+#define MAX_HTTPSOCK	6
+uint8_t socknumlist[] = {2, 3, 4, 5, 6, 7};
+
+////////////////////////////////////////////////
+// Shared Buffer Definition  				  //
+////////////////////////////////////////////////
+uint8_t RX_BUF[DATA_BUF_SIZE];
+uint8_t TX_BUF[DATA_BUF_SIZE];
+
+///////////////////////////
+// Network Configuration //
+///////////////////////////
+wiz_NetInfo gWIZNETINFO = { .mac 	= {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef},	// Mac address
+                            .ip 	= {192, 168, 1, 30},					// IP address
+                            .sn 	= {255, 255, 255, 0},					// Subnet mask
+                            .gw 	= {192, 168, 1, 254},						// Gateway address
+                            .dns 	= {8, 8, 8, 8},							// DNS server
+                            .dhcp 	= NETINFO_DHCP/*NETINFO_STATIC*/ };						// DHCP enable / disable
+
+
+
 
 // Button instance
 bc_button_t button;
@@ -17,6 +61,8 @@ enum
 };
 
 bc_tca9534a_t tca9534a;
+
+void http_tick_task(void *param);
 
 void delay(int ms)
 {
@@ -141,132 +187,37 @@ void eth_write(uint16_t addr, uint8_t cb, uint8_t *buffer, uint16_t len)
     eth_spi_cs(1);
 }
 
-unsigned char wizGetCtl8(uint16_t ctlregaddr);
-uint16_t wizGetCtl16(uint16_t ctlregaddr);
-
-#define wizWrite(addr, cb, buff, len) eth_write(addr,cb,buff,len)
-#define wizRead(addr, cb, buff, len) eth_read(addr,cb,buff,len)
-
-#define sendconst(x) send0((unsigned char*)x,sizeof(x)-1)
-
-#define MAX_BUF 512
-unsigned char buf[MAX_BUF];			//memory buffer for incoming & outgoing data
-
-
-union WReg{ //used to retrieve a 16 bit value from the wiznet
-	uint16_t i;
-	unsigned char c[2];
-};
-
-void wizCmd(unsigned char cmd){ //send a command to socket 0 and wait for completion
-	wizWrite(SnCR,WIZNET_WRITE_S0R,&cmd,1); //send the command
-	while(wizRead(SnCR,WIZNET_READ_S0R,&cmd,1),cmd); //wait til command completes
-
+/* W5500 Call Back Functions */
+static void  wizchip_select(void)
+{
+	eth_spi_cs(0);	// SSEL(CS)
 }
 
-void wizSetCtl8(unsigned int ctlreg, unsigned char val){//write to a socket 0 control register
-
-    volatile uint8_t before;
-    volatile uint8_t after;
-
-    before = wizGetCtl8(ctlreg);
-
-	wizWrite(ctlreg, WIZNET_WRITE_S0R,&val,1);
-
-    after = wizGetCtl8(ctlreg);
-
-    before++;
-    after++;
-}
-unsigned char wizGetCtl8(uint16_t ctlregaddr){
-  unsigned char regval; //spot to hold the register contents
-  wizRead(ctlregaddr,WIZNET_READ_S0R,&regval,1);
-  return regval;
+static void  wizchip_deselect(void)
+{
+	eth_spi_cs(1);	// SSEL(CS)
 }
 
-void wizSetCtl16(uint16_t ctlreg, uint16_t val){
-    volatile uint8_t before;
-    volatile uint8_t after;
-
-    uint8_t buff[2];
-    buff[0] = val >> 8;
-    buff[1] = val;
-
-    before = wizGetCtl16(ctlreg);
-
-    wizWrite(ctlreg,WIZNET_WRITE_S0R,(unsigned char *) buff,2);
-
-    after = wizGetCtl16(ctlreg);
-
-    before++;
-    after++;
+static uint8_t wizchip_read()
+{
+	uint8_t rb;
+	bc_spi_transfer(NULL, &rb, 1);
+	return rb;
 }
 
-uint16_t wizGetCtl16(uint16_t ctlreg){
-  //union WReg regval;
-  uint8_t buff[2];
-
-  wizRead(ctlreg,WIZNET_READ_S0R, buff,2);
-
-  uint16_t ret = buff[0] << 8 | buff[1];
-  return ret;
-}
-void wiz_Init(unsigned char ip_addr[]){// Ethernet Setup
-  wizWrite(SIPR,WIZNET_WRITE_COMMON,ip_addr,4);// Set the Wiznet W5100 IP Address
+static void  wizchip_write(uint8_t wb)
+{
+	bc_spi_transfer(&wb, NULL, 1);
 }
 
-void socket0_init(){ //initialize socket 0 for http server
-	wizCmd(CR_CLOSE); //make sure port is closed
-	wizSetCtl8(SnIR,0xFF); //reset interrupt reg
-	wizSetCtl8(SnMR,MR_TCP); //set mode register to tcp
-	wizSetCtl16(SnPORT,80); //set tcp port to 80
-	wizCmd(CR_OPEN); //open the port
-	wizCmd(CR_LISTEN); //listen for a conection
+static void wizchip_readburst(uint8_t* pBuf, uint16_t len)
+{
+	bc_spi_transfer(NULL, pBuf, len);
 }
 
-unsigned int send0(unsigned char *buf,unsigned int buflen){
-    unsigned int timeout,txsize,txfree;
-    unsigned char crsend=CR_SEND,crreadback;
-	unsigned int txwr;
-    if (buflen <= 0) return 0; //make sure there is something to send
-    //make sure there is room in the transmit buffer for what we want to send
-    txfree=wizGetCtl16(SnTX_FSR); //this is the size of the available buffer area
-    timeout=0;
-    while (txfree < buflen) {
-      delay(1);
-     txfree=wizGetCtl16(SnTX_FSR);
-     if (timeout++ > 1000) {// Timeout for approx 1 sec
-       	printf("TX Free Size Error!\n");
-		wizCmd(CR_DISCON);// Disconnect the connection
-       	return 0;
-     }
-   }
-	//space is available so we will send the buffer
-   	txwr=wizGetCtl16(SnTX_WR);  // Read the Tx Write Pointer
-   	wizWrite(txwr,WIZNET_WRITE_S0TX,buf, buflen); //write the outgoing data to the transmit buffer
-   	wizSetCtl16(SnTX_WR,txwr+buflen);//update the buffer pointer
-	wizCmd(CR_SEND); // Now Send the SEND command which tells the wiznet the pointer is updated
-    return 1;
-}
-
-unsigned int recv0(unsigned char *buf,unsigned int buflen){
-	unsigned int rxrd;
-    if (buflen <= 0) return 1;
-    if (buflen > MAX_BUF)	// If the request size > MAX_BUF,just truncate it
-        buflen=MAX_BUF - 2;
-    rxrd = wizGetCtl16(SnRX_RD); // get the address where the wiznet is holding the data
-	wizRead(rxrd,WIZNET_READ_S0RX,buf,buflen); //read the data
-    *(buf+buflen)='\0';        // terminate string
-    return 1;
-}
-
-void flush(unsigned int rsize){ //this just gets rid of data that i don't want to process
-	unsigned int rxrd;
-	if (rsize>0){
-  		rxrd=wizGetCtl16(SnRX_RD); //retrieve read data pointer
-  		wizSetCtl16(SnRX_RD,rxrd+rsize); //replace read data pointer
-		wizCmd(CR_RECV); //tell the wiznet we`ve retrieved the data
-	}
+static void  wizchip_writeburst(uint8_t* pBuf, uint16_t len)
+{
+	bc_spi_transfer(pBuf, NULL, len);
 }
 
 
@@ -295,81 +246,69 @@ void application_init(void)
     bc_button_init(&button, BC_GPIO_BUTTON, BC_GPIO_PULL_DOWN, false);
     bc_button_set_event_handler(&button, button_event_handler, NULL);
 
-    eth_init();
-
     bc_log_debug("app_init");
 
     bc_system_pll_enable();
 
-    // Set MAC address
-    uint8_t mac[] = {0xaa, 0xaa, 0xaa, 0xbb, 0xbb, 0xbb};
-    eth_write(0x0009, 0x04, mac, 6);
+    eth_init();
 
-    // Set IP address
-    uint8_t buf[4];
-    buf[0] = 192;
-    buf[1] = 168;
-    buf[2] = 1;
-    buf[3] = 30;
-    eth_write(0x000F, 0x04, buf, 4);
+    /* Register Call back function */
+	reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
+	reg_wizchip_spi_cbfunc(wizchip_read, wizchip_write);
+	reg_wizchip_spiburst_cbfunc(wizchip_readburst, wizchip_writeburst);
 
-}
-
-void sendresp(){
-	static char hdr1[]="HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n"
-						"<html>"
-						"<span style=\"color:#0000A0\">\r\n"
-						"<center><h1>Hello from BigClown</h1>";
-	sendconst(hdr1); 	// Now Send the HTTP Response first part
-
-    static char buffer[64];
-    snprintf(buffer, sizeof(buffer), "Button press: %d", button_press_count);
-    sendconst(buffer);
-
-	static char trlr[]="</center></body></html>\r\n\r\n";
-	sendconst(trlr); 	// Now Send the rest of the page
-}
-
-void handlesession(){
-	unsigned int rsize;
-	rsize=wizGetCtl16(SnRX_RSR); //get the size of the received data
-	if (rsize>0){
-		sendresp(); //send a response
-		flush(rsize);	//get rid of the received data
+	/* W5500 Chip Initialization */
+    uint8_t memsize[2][8] = { { 2, 2, 2, 2, 2, 2, 2, 2 }, { 2, 2, 2, 2, 2, 2, 2, 2 } };
+	if (ctlwizchip(CW_INIT_WIZCHIP, (void*) memsize) == -1) {
+		printf("WIZCHIP Initialized fail.\r\n");
+		while (1);
 	}
-	wizCmd(CR_DISCON);
+
+    ctlnetwork(CN_SET_NETINFO, (void*) &gWIZNETINFO);
+
+    httpServer_init(TX_BUF, RX_BUF, MAX_HTTPSOCK, socknumlist);		// Tx/Rx buffers (1kB) / The number of W5500 chip H/W sockets in use
+    bc_scheduler_register(http_tick_task, NULL, 0);
+
+    /* Web content registration (web content in webpage.h, Example web pages) */
+
+    // Index page and netinfo / base64 image demo
+    reg_httpServer_webContent((uint8_t *)"index.html", (uint8_t *)index_page);				// index.html 		: Main page example
+    reg_httpServer_webContent((uint8_t *)"netinfo.html", (uint8_t *)netinfo_page);			// netinfo.html 	: Network information example page
+    reg_httpServer_webContent((uint8_t *)"netinfo.js", (uint8_t *)wiz550web_netinfo_js);	// netinfo.js 		: JavaScript for Read Network configuration 	(+ ajax.js)
+    reg_httpServer_webContent((uint8_t *)"img.html", (uint8_t *)img_page);					// img.html 		: Base64 Image data example page
+
+    // Example #1
+    reg_httpServer_webContent((uint8_t *)"dio.html", (uint8_t *)dio_page);					// dio.html 		: Digital I/O control example page
+    reg_httpServer_webContent((uint8_t *)"dio.js", (uint8_t *)wiz550web_dio_js);			// dio.js 			: JavaScript for digital I/O control 	(+ ajax.js)
+
+    // Example #2
+    reg_httpServer_webContent((uint8_t *)"ain.html", (uint8_t *)ain_page);					// ain.html 		: Analog input monitor example page
+    reg_httpServer_webContent((uint8_t *)"ain.js", (uint8_t *)wiz550web_ain_js);			// ain.js 			: JavaScript for Analog input monitor	(+ ajax.js)
+
+    // Example #3
+    reg_httpServer_webContent((uint8_t *)"ain_gauge.html", (uint8_t *)ain_gauge_page);		// ain_gauge.html 	: Analog input monitor example page; using Google Gauge chart
+    reg_httpServer_webContent((uint8_t *)"ain_gauge.js", (uint8_t *)ain_gauge_js);			// ain_gauge.js 	: JavaScript for Google Gauge chart		(+ ajax.js)
+
+    // AJAX JavaScript functions
+    reg_httpServer_webContent((uint8_t *)"ajax.js", (uint8_t *)wiz550web_ajax_js);			// ajax.js			: JavaScript for AJAX request transfer
+
 }
 
 void application_task(void)
 {
+    for (int i = 0; i < MAX_HTTPSOCK; i++)
+    {
+        httpServer_run(i); 	// HTTP Server Handler
+    }
 
-		uint8_t socket0status=wizGetCtl8(SnSR); //socket 0 status
-		switch (socket0status){
-			case SOCK_CLOSED: //initial condition
-				socket0_init();	//initialize socket 0
-				break;
-			case SOCK_ESTABLISHED: //someone wants to talk to the server
-				handlesession();
-				break;
-			//following are cases where we have to reset and reopen the socket
-			case SOCK_FIN_WAIT: case SOCK_CLOSING: case SOCK_TIME_WAIT:
-			case SOCK_CLOSE_WAIT: case SOCK_LAST_ACK:
-				wizCmd(CR_CLOSE);
-				break;
-		}
+    bc_scheduler_plan_current_from_now(20);
+}
 
-/*
-    eth_read(0x0039, 0, buf, 4);
-    bc_log_dump(buf, 4, "VersionR");
+void http_tick_task(void *param)
+{
+    (void) param;
 
+    httpServer_time_handler();
 
-    eth_read(0x000F, 0, buf, 4);
-    bc_log_dump(buf, 4, "IP");*/
-
-/*
-    // Allcapable + auto negotiation
-    buf[0] = 0xFF;
-    eth_write(0x002E, 0x04, buf, 1);
-*/
-    bc_scheduler_plan_current_from_now(100);
+    bc_scheduler_plan_current_from_now(1000);
 }

@@ -4,3 +4,6 @@
 [submodule ".vscode"]
 	path = .vscode
 	url = https://github.com/bigclownlabs/bcf-vscode.git
+[submodule "ioLibrary_Driver"]
+	path = ioLibrary_Driver
+	url = git@github.com:Wiznet/ioLibrary_Driver.git
