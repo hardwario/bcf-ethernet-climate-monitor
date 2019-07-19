@@ -17,6 +17,7 @@
 #include "wizchip_conf.h"
 
 #include <application.h>
+extern bc_led_t led;
 
 #define DIOn			16
 #define AINn			7 	// AIN for PTM/Temp.Sensor + A0 ~ A5

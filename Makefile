@@ -6,10 +6,17 @@ CFLAGS += -D'VERSION="${VERSION}"'
 INC_DIR += ioLibrary_Driver/Ethernet
 INC_DIR += ioLibrary_Driver/Internet/httpServer
 
+INC_DIR += ioLibrary_Driver/Internet/MQTT
+INC_DIR += ioLibrary_Driver/Internet/MQTT/MQTTPacket/src
+
 SRC_DIR += ioLibrary_Driver
 SRC_DIR += ioLibrary_Driver/Ethernet
 SRC_DIR += ioLibrary_Driver/Ethernet/W5500
 SRC_DIR += ioLibrary_Driver/Internet/httpServer
+
+SRC_DIR += ioLibrary_Driver/Internet/MQTT
+SRC_DIR += ioLibrary_Driver/Internet/MQTT/MQTTPacket/src
+
 
 -include sdk/Makefile.mk
 
