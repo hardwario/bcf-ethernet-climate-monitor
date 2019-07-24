@@ -7,4 +7,9 @@
 
 #include <bcl.h>
 
+// Button instance
+bc_button_t button;
+// LED instance
+bc_led_t led;
+
 #endif // _APPLICATION_H

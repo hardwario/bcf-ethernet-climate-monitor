@@ -166,8 +166,10 @@ void bc_module_ethernet_init(wiz_NetInfo *wiznet_info)
     {
     }
 
-    // Read unique ID from security chip and use it as a MAC
-    //bc_atsha
+    // Set MAC address based on MCU unique ID
+    wiznet_info->mac[0] = 0xDE;
+    wiznet_info->mac[1] = 0xAD;
+    memcpy(&wiznet_info->mac[2], (uint8_t*)(UID_BASE + 0x14), 4);
 
     /* Register Call back function */
 	reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);

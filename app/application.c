@@ -4,6 +4,9 @@
 #include "webserver.h"
 #include "mqtt_client.h"
 
+#include "app_climate_module.h"
+#include "app_relay_module.h"
+
 // For adding new services from ioLibrary_Driver/Internet, you have to add the folder paths to the Makefile
 
 // Network Configuration
@@ -14,10 +17,7 @@ wiz_NetInfo gWIZNETINFO = { .mac 	= {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef},	// Mac
                             .dns 	= {8, 8, 8, 8},							// DNS server
                             .dhcp 	= NETINFO_DHCP/*NETINFO_STATIC*/ };		// DHCP enable / disable
 
-// Button instance
-bc_button_t button;
-// LED instance
-bc_led_t led;
+
 
 void button_event_handler(bc_button_t *self, bc_button_event_t event, void *event_param)
 {
@@ -27,9 +27,9 @@ void button_event_handler(bc_button_t *self, bc_button_event_t event, void *even
         bc_led_pulse(&led, 200);
         button_press_count++;
 
-        char buffer[10];
-        snprintf(buffer, sizeof(buffer), "%d", button_press_count);
-        mqtt_client_pub("node/ethernet-module/button/-/event-count", buffer);
+        mqtt_client_pub_int("push-button/-/event-count", &button_press_count);
+
+        bc_module_relay_toggle(&relay);
     }
 }
 
@@ -51,5 +51,9 @@ void application_init(void)
     bc_module_ethernet_init(&gWIZNETINFO);
 
     webserver_start();
-    mqtt_client_start();
+    mqtt_client_start("ethernet-node");
+
+    app_climate_module_start();
+    app_relay_module_start();
+
 }

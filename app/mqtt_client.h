@@ -3,8 +3,12 @@
 
 #include <bcl.h>
 #include "MQTTClient.h"
+#include "application.h"
 
-void mqtt_client_start();
-void mqtt_client_pub(char *topic, char *payload);
+void mqtt_client_start(char *node_alias);
+
+void mqtt_client_pub_string(char *topic, char *payload);
+void mqtt_client_pub_float(char *topic, float *value);
+void mqtt_client_pub_int(char *topic, int *value);
 
 #endif
