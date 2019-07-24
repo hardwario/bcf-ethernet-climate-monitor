@@ -10,8 +10,7 @@
 // For adding new services from ioLibrary_Driver/Internet, you have to add the folder paths to the Makefile
 
 // Network Configuration
-wiz_NetInfo gWIZNETINFO = { .mac 	= {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef},	// Mac address
-                            .ip 	= {192, 168, 1, 30},					// IP address
+wiz_NetInfo gWIZNETINFO = { .ip 	= {192, 168, 1, 30},					// IP address
                             .sn 	= {255, 255, 255, 0},					// Subnet mask
                             .gw 	= {192, 168, 1, 254},					// Gateway address
                             .dns 	= {8, 8, 8, 8},							// DNS server
