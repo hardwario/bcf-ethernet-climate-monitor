@@ -2,6 +2,7 @@ SDK_DIR ?= sdk
 VERSION ?= vdev
 
 CFLAGS += -D'VERSION="${VERSION}"'
+CFLAGS += -D'_WIZCHIP_=5500'
 
 INC_DIR += ioLibrary_Driver/Ethernet
 INC_DIR += ioLibrary_Driver/Internet/httpServer
@@ -16,7 +17,6 @@ SRC_DIR += ioLibrary_Driver/Internet/httpServer
 
 SRC_DIR += ioLibrary_Driver/Internet/MQTT
 SRC_DIR += ioLibrary_Driver/Internet/MQTT/MQTTPacket/src
-
 
 -include sdk/Makefile.mk
 
