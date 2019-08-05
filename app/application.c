@@ -1,9 +1,7 @@
 #include <application.h>
-
 #include "bc_module_ethernet.h"
 #include "webserver.h"
 #include "mqtt_client.h"
-
 #include "app_climate_module.h"
 #include "app_relay_module.h"
 
@@ -41,17 +39,13 @@ void application_init(void)
     bc_button_init(&button, BC_GPIO_BUTTON, BC_GPIO_PULL_DOWN, false);
     bc_button_set_event_handler(&button, button_event_handler, NULL);
 
-    bc_log_debug("app_init");
-
     bc_module_ethernet_init(&gWIZNETINFO);
 
     mqtt_client_start("ethernet-node");
-
-    // Run webserver example
-    webserver_start();
-
     // Run and publish data from Climate Module
     app_climate_module_start();
     // Support to control Relay Module over MQTT
     app_relay_module_start();
+    // Run webserver example
+    webserver_start();
 }
