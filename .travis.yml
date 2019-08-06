@@ -7,11 +7,14 @@ addons:
     packages:
       - gcc-arm-embedded
 script:
+  - arm-none-eabi-gcc -v
   - make release OUT=bcf-ethernet-climate-monitor-${TRAVIS_TAG} VERSION=${TRAVIS_TAG}
 deploy:
   skip_cleanup: true
   file_glob: true
-  file: out/release/*.bin
+  file:
+    - out/release/*.bin
+    - out/release/*.elf
   api_key: ${GITHUB_KEY}
   provider: releases
   overwrite: true
