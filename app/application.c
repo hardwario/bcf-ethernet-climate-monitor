@@ -47,5 +47,5 @@ void application_init(void)
     // Support to control Relay Module over MQTT
     app_relay_module_start();
     // Run webserver example
-    //webserver_start();
+    webserver_start();
 }
