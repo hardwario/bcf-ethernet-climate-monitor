@@ -22,31 +22,30 @@ void eth_spi_cs(bool chip_select)
 {
     if (chip_select)
     {
-        GPIOB->BSRR = GPIO_BSRR_BR_12;
-    }
-    else
-    {
-        GPIOB->BSRR = GPIO_BSRR_BS_12;
-    }
-
-    /*
-    if (chip_select)
-    {
-        if (!bc_tca9534a_write_pin(&tca9534a, _BC_MODULE_ETHERNET_CS_PIN, 1))
+        if (!bc_tca9534a_write_pin(&tca9534a, _BC_MODULE_ETHERNET_CS_PIN, 0))
         {
             bc_log_debug("CS ERR1");
         }
     }
     else
     {
-        if (!bc_tca9534a_write_pin(&tca9534a, _BC_MODULE_ETHERNET_CS_PIN, 0))
+        if (!bc_tca9534a_write_pin(&tca9534a, _BC_MODULE_ETHERNET_CS_PIN, 1))
         {
             bc_log_debug("CS ERR0");
         }
     }
-    */
-}
 
+
+    if (chip_select)
+    {
+        GPIOB->BSRR = GPIO_BSRR_BR_12;
+    }
+    else
+    {
+        GPIOB->BSRR = GPIO_BSRR_BS_12;
+    }
+}
+/*
 void eth_read(uint16_t addr, uint8_t cb, uint8_t *buffer, uint16_t len)
 {
     uint8_t cmd[8];
@@ -79,17 +78,17 @@ void eth_write(uint16_t addr, uint8_t cb, uint8_t *buffer, uint16_t len)
     bc_spi_transfer(buffer, NULL, len);
 
     eth_spi_cs(1);
-}
+}*/
 
 /* W5500 Call Back Functions */
 static void  wizchip_select(void)
 {
-	eth_spi_cs(0);	// SSEL(CS)
+	eth_spi_cs(true);
 }
 
 static void  wizchip_deselect(void)
 {
-	eth_spi_cs(1);	// SSEL(CS)
+	eth_spi_cs(false);
 }
 
 static uint8_t wizchip_read()
@@ -131,7 +130,7 @@ void bc_module_ethernet_init(wiz_NetInfo *wiznet_info)
         return ;
     }
 
-    if (!bc_tca9534a_write_pin(&tca9534a, _BC_MODULE_ETHERNET_CS_PIN, 0))
+    if (!bc_tca9534a_write_pin(&tca9534a, _BC_MODULE_ETHERNET_CS_PIN, 1))
     {
         bc_log_debug("CS ERR0");
     }
