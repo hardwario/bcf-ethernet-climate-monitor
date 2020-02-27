@@ -28,12 +28,10 @@ bool _config_at_factory(void);
                         {"$SUBNET", NULL, _config_at_subnet_set, _config_at_subnet_read, NULL,  "Subnet mask"}, \
                         {"$MQTT_IP", NULL, _config_at_mqtt_ip_set, _config_at_mqtt_ip_read, NULL, "MQTT broker IP"}, \
                         {"$MQTT_PORT", NULL, _config_at_mqtt_port_set, _config_at_mqtt_port_read, NULL, "MQTT broker port"}, \
-                        {"$GATEWAY", NULL, _config_at_mqtt_port_set, _config_at_mqtt_port_read, NULL, "MQTT broker port"}, \
-                        {"$DNS", NULL, _config_at_mqtt_port_set, _config_at_mqtt_port_read, NULL, "MQTT broker port"}, \
+                        {"$GATEWAY", NULL, _config_at_gateway_set, _config_at_gateway_read, NULL, "Gateway IP"}, \
+                        {"$DNS", NULL, _config_at_dns_set, _config_at_dns_read, NULL, "DNS IP"}, \
                         {"&W", _config_at_write, NULL, NULL, NULL, "Write config to flash"}, \
                         {"&F", _config_at_factory, NULL, NULL, NULL, "Load default configuration"} \
-
-
 
 // Example structure that save configuration of PIR detector
 typedef struct config_t
@@ -124,7 +122,7 @@ bool _config_at_mqtt_port_set(bc_atci_param_t *param)
 
 bool _config_at_gateway_read(void)
 {
-    bc_atci_printf("$GATEWAY:%d", config.mqtt_port);
+    bc_atci_printf("$GATEWAY:%s", config.gateway);
     return true;
 }
 
@@ -136,7 +134,7 @@ bool _config_at_gateway_set(bc_atci_param_t *param)
 
 bool _config_at_dns_read(void)
 {
-    bc_atci_printf("$DNS:%d", config.mqtt_port);
+    bc_atci_printf("$DNS:%s", config.dns);
     return true;
 }
 
@@ -149,6 +147,7 @@ bool _config_at_dns_set(bc_atci_param_t *param)
 bool _config_at_write(void)
 {
     bc_config_save();
+    bc_system_reset();
     return true;
 }
 
