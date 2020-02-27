@@ -30,7 +30,9 @@ sdk: sdk/Makefile.mk
 update:
 	@git submodule update --remote --merge sdk
 	@git submodule update --remote --merge .vscode
+	@git submodule update --remote --merge ioLibrary_Driver
 
 sdk/Makefile.mk:
 	@git submodule update --init sdk
 	@git submodule update --init .vscode
+	@git submodule update --init ioLibrary_Driver

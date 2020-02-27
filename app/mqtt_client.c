@@ -1,7 +1,7 @@
 
 #include "mqtt_client.h"
-
 #include "app_relay_module.h"
+#include "config.h"
 
 //Socket number defines
 #define TCP_SOCKET	0
@@ -12,8 +12,9 @@
 #define TOPIC_FORMAT "node/%s/"
 
 //Global variables
-unsigned char targetIP[4] = {192,168,1,112}; // mqtt server IP
-unsigned int targetPort = 1883; // mqtt server port
+uint8_t targetIP[4]; // mqtt server IP
+uint16_t targetPort; // mqtt server port
+
 unsigned char tempBuffer[BUFFER_SIZE];
 
 char *mqtt_topic_alias;
@@ -120,7 +121,10 @@ void mqtt_client_start(char *node_alias)
     mqtt_topic_alias = node_alias;
 
 	NewNetwork(&n, TCP_SOCKET);
+    // Load configuration from flash
+    config_get_mqtt(targetIP, &targetPort);
 	ConnectNetwork(&n, targetIP, targetPort);
+
 	MQTTClientInit(&c, &n, 1000, buf, sizeof(buf), tempBuffer, sizeof(tempBuffer));
 	data.willFlag = 0;
 	data.MQTTVersion = 3;
