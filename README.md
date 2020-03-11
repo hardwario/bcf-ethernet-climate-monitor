@@ -1,6 +1,11 @@
-<a href="https://www.bigclown.com/"><img src="https://bigclown.sirv.com/logo.png" width="200" alt="BigClown Logo" align="right"></a>
+<a href="https://www.hardwario.com/"><img src="https://www.hardwario.com/ci/assets/hw-logo.svg" width="200" alt="HARDWARIO Logo" align="right"></a>
 
-# BigClown Ethernet Climate Monitor
+# HARDWARIO Ethernet Climate Monitor
+
+[![Travis](https://img.shields.io/travis/bigclownprojects/bcf-ethernet-climate-monitor/master.svg)](https://travis-ci.org/bigclownprojects/bcf-ethernet-climate-monitor)
+[![Release](https://img.shields.io/github/release/bigclownprojects/bcf-ethernet-climate-monitor.svg)](https://github.com/bigclownprojects/bcf-ethernet-climate-monitor/releases)
+[![License](https://img.shields.io/github/license/bigclownprojects/bcf-ethernet-climate-monitor.svg)](https://github.com/bigclownprojects/bcf-ethernet-climate-monitor/blob/master/LICENSE)
+[![Twitter](https://img.shields.io/twitter/follow/hardwario_en.svg?style=social&label=Follow)](https://twitter.com/hardwario_en)
 
 This repository contains firmware for [Core Module](https://shop.bigclown.com/core-module).
 
